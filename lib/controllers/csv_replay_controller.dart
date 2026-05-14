@@ -7,7 +7,7 @@ import '../models/session_data_point.dart';
 // 1. O ESTADO (Simples e funcional)
 class ReplayState {
   final List<SessionDataPoint> timeline;
-  final int currentIndex;
+  final double currentIndex;
   final bool isLoading;
 
   ReplayState({
@@ -17,13 +17,38 @@ class ReplayState {
   });
 
   SessionDataPoint? get currentPoint => 
-      timeline.isNotEmpty ? timeline[currentIndex] : null;
+      timeline.isNotEmpty ? timeline[currentIndex.toInt()] : null;
 
-  ReplayState copyWith({List<SessionDataPoint>? timeline, int? currentIndex, bool? isLoading}) {
+  ReplayState copyWith({List<SessionDataPoint>? timeline, double? currentIndex, bool? isLoading}) {
     return ReplayState(
       timeline: timeline ?? this.timeline,
       currentIndex: currentIndex ?? this.currentIndex,
       isLoading: isLoading ?? this.isLoading,
+    );
+  }
+
+  // Interpolação Linear
+  SessionDataPoint? get interpolatedPoint {
+    if (timeline.isEmpty) return null;
+    
+    int indexA = currentIndex.floor();
+    int indexB = (indexA + 1).clamp(0, timeline.length - 1);
+    double fraction = currentIndex - indexA;
+
+    final pA = timeline[indexA];
+    final pB = timeline[indexB];
+
+    return SessionDataPoint(
+      timeMs: pA.timeMs, // O tempo podemos manter o do ponto inicial
+      // Interpolação da Inclinação
+      leanAngle: pA.leanAngle + (pB.leanAngle - pA.leanAngle) * fraction,
+      // Interpolação das Coordenadas (O segredo da suavidade no mapa)
+      latitude: pA.latitude + (pB.latitude - pA.latitude) * fraction,
+      longitude: pA.longitude + (pB.longitude - pA.longitude) * fraction,
+      // Interpolação da Velocidade e G-Force
+      speedKmh: pA.speedKmh + (pB.speedKmh - pA.speedKmh) * fraction,
+      gForceX: pA.gForceX + (pB.gForceX - pA.gForceX) * fraction,
+      gForceY: pA.gForceY + (pB.gForceY - pA.gForceY) * fraction,
     );
   }
 }
@@ -77,7 +102,7 @@ class CsvReplayController extends StateNotifier<ReplayState> {
 
   void scrubTo(double value) {
   if (state.timeline.isEmpty) return;
-  final int newIndex = value.toInt().clamp(0, state.timeline.length - 1);
+  final double newIndex = value.toDouble().clamp(0, state.timeline.length - 1);
   state = state.copyWith(currentIndex: newIndex);
   }
 }

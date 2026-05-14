@@ -47,13 +47,13 @@ class _SessionReplayScreenState extends ConsumerState<SessionReplayScreen> {
     }
 
     final route = _extractRoute(replayState.timeline);
-    final currentPoint = replayState.currentPoint!;
+    final currentPoint = replayState.interpolatedPoint!;
     final currentLatLng = LatLng(currentPoint.latitude, currentPoint.longitude);
 
     // Tentamos animar a câmara se houver movimento significativo do GPS, mas de forma suave
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (currentLatLng.latitude != 0 && currentLatLng.longitude != 0) {
-        _mapController.move(currentLatLng, 18.0); 
+        _mapController.move(currentLatLng, 17.0); 
       }
     });
 
@@ -146,7 +146,7 @@ class _SessionReplayScreenState extends ConsumerState<SessionReplayScreen> {
                   child: Slider(
                     min: 0,
                     max: (replayState.timeline.length - 1).toDouble(),
-                    value: replayState.currentIndex.toDouble(),
+                    value: replayState.currentIndex,
                     onChanged: (value) {
                       // Movemos o dedo e pedimos ao controller para recalcular
                       controller.scrubTo(value);
