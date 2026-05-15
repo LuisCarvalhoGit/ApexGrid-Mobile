@@ -61,43 +61,69 @@ class CsvReplayController extends StateNotifier<ReplayState> {
   }
 
   Future<void> _loadCsvData(String filePath) async {
-  try {
-    final file = File(filePath);
-    if (!await file.exists()) {
-    state = state.copyWith(isLoading: false);
-    return;
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) {
+        state = state.copyWith(isLoading: false);
+        return;
+      }
+
+      final fileContent = await file.readAsString();
+      final lines = fileContent.split('\n');
+      final List<SessionDataPoint> parsedTimeline = [];
+
+      for (int i = 1; i < lines.length; i++) {
+        final line = lines[i].trim();
+        if (line.isEmpty) continue;
+
+        final columns = line.split(',');
+        if (columns.length >= 7) {
+          parsedTimeline.add(SessionDataPoint(
+            timeMs: int.tryParse(columns[0]) ?? 0,
+            leanAngle: double.tryParse(columns[1]) ?? 0.0,
+            gForceX: double.tryParse(columns[2]) ?? 0.0,
+            gForceY: double.tryParse(columns[3]) ?? 0.0,
+            latitude: double.tryParse(columns[4]) ?? 0.0,
+            longitude: double.tryParse(columns[5]) ?? 0.0,
+            speedKmh: double.tryParse(columns[6]) ?? 0.0,
+          ));
+        }
+      }
+
+      // --- PASSE DE SUAVIZAÇÃO DE GPS (O SEGREDO DA FLUIDEZ) ---
+      // Distribuímos o "salto" de 1 segundo de GPS pelos 50 frames de sensores
+      int lastGpsIndex = 0;
+      for (int i = 1; i < parsedTimeline.length; i++) {
+        if (parsedTimeline[i].latitude != parsedTimeline[lastGpsIndex].latitude ||
+            parsedTimeline[i].longitude != parsedTimeline[lastGpsIndex].longitude) {
+          
+          int steps = i - lastGpsIndex;
+          double latDiff = parsedTimeline[i].latitude - parsedTimeline[lastGpsIndex].latitude;
+          double lonDiff = parsedTimeline[i].longitude - parsedTimeline[lastGpsIndex].longitude;
+
+          for (int j = 1; j < steps; j++) {
+            double fraction = j / steps;
+            final p = parsedTimeline[lastGpsIndex + j];
+            
+            // Reescrevemos os frames vazios com posições intermediárias milimétricas
+            parsedTimeline[lastGpsIndex + j] = SessionDataPoint(
+              timeMs: p.timeMs,
+              leanAngle: p.leanAngle,
+              gForceX: p.gForceX,
+              gForceY: p.gForceY,
+              speedKmh: p.speedKmh,
+              latitude: parsedTimeline[lastGpsIndex].latitude + latDiff * fraction,
+              longitude: parsedTimeline[lastGpsIndex].longitude + lonDiff * fraction,
+            );
+          }
+          lastGpsIndex = i;
+        }
+      }
+
+      state = state.copyWith(timeline: parsedTimeline, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
     }
-
-    final fileContent = await file.readAsString();
-    
-    // Processamento nativo: evitamos conflitos com o pacote 'csv'
-    final lines = fileContent.split('\n');
-    final List<SessionDataPoint> parsedTimeline = [];
-
-    // i = 1 para saltar o cabeçalho
-    for (int i = 1; i < lines.length; i++) {
-    final line = lines[i].trim();
-    if (line.isEmpty) continue;
-
-    final columns = line.split(',');
-    
-    if (columns.length >= 7) {
-      parsedTimeline.add(SessionDataPoint(
-      timeMs: int.tryParse(columns[0]) ?? 0,
-      leanAngle: double.tryParse(columns[1]) ?? 0.0,
-      gForceX: double.tryParse(columns[2]) ?? 0.0,
-      gForceY: double.tryParse(columns[3]) ?? 0.0,
-      latitude: double.tryParse(columns[4]) ?? 0.0,
-      longitude: double.tryParse(columns[5]) ?? 0.0,
-      speedKmh: double.tryParse(columns[6]) ?? 0.0,
-      ));
-    }
-    }
-
-    state = state.copyWith(timeline: parsedTimeline, isLoading: false);
-  } catch (e) {
-    state = state.copyWith(isLoading: false);
-  }
   }
 
   void scrubTo(double value) {

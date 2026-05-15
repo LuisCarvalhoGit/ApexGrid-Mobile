@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../controllers/csv_replay_controller.dart';
 import '../models/session_data_point.dart';
+import '../services/map_matching_service.dart'; // Garante que este ficheiro existe
 
 class SessionReplayScreen extends ConsumerStatefulWidget {
   final String csvFilePath;
@@ -17,110 +18,143 @@ class SessionReplayScreen extends ConsumerStatefulWidget {
 
 class _SessionReplayScreenState extends ConsumerState<SessionReplayScreen> {
   final MapController _mapController = MapController();
+  List<LatLng> _snappedRoute = [];
+  bool _isMatching = true;
+  bool _followMarker = true; // Permite ao utilizador soltar a câmara para explorar o mapa
 
-  // Função utilitária para converter a linha do tempo em coordenadas do FlutterMap
-  List<LatLng> _extractRoute(List<SessionDataPoint> timeline) {
-    return timeline
-        .where((point) => point.latitude != 0.0 && point.longitude != 0.0) // Filtra pontos de GPS inválidos
-        .map((point) => LatLng(point.latitude, point.longitude))
-        .toList();
+  @override
+  void initState() {
+    super.initState();
+    // Iniciamos o processamento da rota assim que o widget é criado
+    _initializeRoute();
+  }
+
+  Future<void> _initializeRoute() async {
+    // Pequeno delay para garantir que o provider carregou o CSV
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    if (!mounted) return;
+    
+    final timeline = ref.read(replayProvider(widget.csvFilePath)).timeline;
+    
+    if (timeline.isNotEmpty) {
+      // Chamada ao serviço que "cola" os pontos à estrada real
+      final matched = await MapMatchingService.snapToRoads(timeline);
+      
+      if (mounted) {
+        setState(() {
+          _snappedRoute = matched;
+          _isMatching = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Escutamos o estado do replay, passando o caminho do ficheiro que recebemos
     final replayState = ref.watch(replayProvider(widget.csvFilePath));
     final controller = ref.read(replayProvider(widget.csvFilePath).notifier);
 
-    if (replayState.isLoading) {
+    // Mostra loading enquanto processa o CSV ou o Map Matching
+    if (replayState.isLoading || _isMatching) {
       return const Scaffold(
         backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator(color: Colors.amberAccent)),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.amberAccent),
+              SizedBox(height: 16),
+              Text('A AJUSTAR TRAJETO À ESTRADA...', 
+                style: TextStyle(color: Colors.amberAccent, letterSpacing: 1.5, fontSize: 12, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
       );
     }
 
-    if (replayState.timeline.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('ERRO DE REPLAY'), backgroundColor: Colors.transparent),
-        body: const Center(child: Text('Ficheiro vazio ou corrompido.', style: TextStyle(color: Colors.white54))),
-      );
-    }
-
-    final route = _extractRoute(replayState.timeline);
+    // Ponto interpolado para fluidez máxima
     final currentPoint = replayState.interpolatedPoint!;
     final currentLatLng = LatLng(currentPoint.latitude, currentPoint.longitude);
 
-    // Tentamos animar a câmara se houver movimento significativo do GPS, mas de forma suave
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (currentLatLng.latitude != 0 && currentLatLng.longitude != 0) {
-        _mapController.move(currentLatLng, 17.0); 
-      }
-    });
+    // Gestão da Câmara: Só move se o "Follow" estiver ativo
+    if (_followMarker && currentLatLng.latitude != 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController.move(currentLatLng, _mapController.camera.zoom);
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('ANÁLISE DE SESSÃO', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
         backgroundColor: Colors.black,
         elevation: 0,
+        actions: [
+          // Botão para travar/destravar a câmara no marcador
+          IconButton(
+            icon: Icon(_followMarker ? Icons.gps_fixed : Icons.gps_not_fixed, 
+                       color: _followMarker ? Colors.amberAccent : Colors.white24),
+            onPressed: () => setState(() => _followMarker = !_followMarker),
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // 1. O Mapa (Metade Superior)
+          // 1. O MAPA COM TRAJETO REAL
           Expanded(
             flex: 3,
             child: FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                initialCenter: route.isNotEmpty ? route.first : const LatLng(0, 0),
-                initialZoom: 18.0,
-                interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
+                initialCenter: _snappedRoute.isNotEmpty ? _snappedRoute.first : const LatLng(0, 0),
+                initialZoom: 17.0,
+                // Se o utilizador arrastar o mapa, desativa o auto-center automaticamente
+                onPositionChanged: (pos, hasGesture) {
+                  if (hasGesture && _followMarker) {
+                    setState(() => _followMarker = false);
+                  }
+                },
               ),
               children: [
                 TileLayer(
                   urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
                   userAgentPackageName: 'com.apexgrid.app',
                 ),
-                // A linha do trajeto percorrido
+                // Linha que segue a estrada (Snap to Road)
                 PolylineLayer(
                   polylines: [
                     Polyline(
-                      points: route,
-                      strokeWidth: 6.0,
-                      color: Colors.cyanAccent.withOpacity(0.5),
+                      points: _snappedRoute,
+                      strokeWidth: 5.0,
+                      color: Colors.cyanAccent.withOpacity(0.6),
                       strokeCap: StrokeCap.round,
-                      strokeJoin: StrokeJoin.round,
                     ),
                   ],
                 ),
-                // O indicador do instante selecionado (O Alvo)
-                if (currentLatLng.latitude != 0)
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: currentLatLng,
-                        width: 50,
-                        height: 50,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.amberAccent.withOpacity(0.3),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.amberAccent, width: 2),
-                          ),
-                          child: const Center(child: Icon(Icons.gps_fixed, size: 24, color: Colors.amberAccent)),
-                        ),
+                // Marcador Fluido e Rotativo
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: currentLatLng,
+                      width: 60,
+                      height: 60,
+                      child: Transform.rotate(
+                        angle: currentPoint.leanAngle * (3.14159 / 180), // Inclina com a mota
+                        child: const Icon(Icons.motorcycle, size: 36, color: Colors.amberAccent),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
 
-          // 2. O Painel de Telemetria do Instante Selecionado
+          // 2. PAINEL DE TELEMETRIA
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
             decoration: BoxDecoration(
               color: const Color(0xFF121212),
-              border: Border(top: BorderSide(color: Colors.amberAccent.withOpacity(0.5), width: 2)),
+              border: Border(top: BorderSide(color: Colors.amberAccent.withOpacity(0.3), width: 2)),
             ),
             child: Column(
               children: [
@@ -132,30 +166,25 @@ class _SessionReplayScreenState extends ConsumerState<SessionReplayScreen> {
                     _buildReplayMetric('ACEL/TRAV', '${currentPoint.gForceY.toStringAsFixed(2)}G', Colors.redAccent),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 
-                // 3. A Linha do Tempo (O Slider Mágico)
+                // 3. SLIDER DE ALTA PRECISÃO
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     activeTrackColor: Colors.amberAccent,
-                    inactiveTrackColor: Colors.white12,
                     thumbColor: Colors.amberAccent,
-                    overlayColor: Colors.amberAccent.withOpacity(0.2),
-                    trackHeight: 8,
+                    trackHeight: 6,
                   ),
                   child: Slider(
                     min: 0,
                     max: (replayState.timeline.length - 1).toDouble(),
-                    value: replayState.currentIndex,
-                    onChanged: (value) {
-                      // Movemos o dedo e pedimos ao controller para recalcular
-                      controller.scrubTo(value);
-                    },
+                    value: replayState.currentIndex.clamp(0, (replayState.timeline.length - 1).toDouble()),
+                    onChanged: (value) => controller.scrubTo(value),
                   ),
                 ),
                 Text(
-                  'Tempo da Viagem: ${(currentPoint.timeMs / 1000).toStringAsFixed(1)}s',
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  'Tempo: ${(currentPoint.timeMs / 1000).toStringAsFixed(1)}s',
+                  style: const TextStyle(color: Colors.white24, fontSize: 11, fontFamily: 'monospace'),
                 ),
               ],
             ),
@@ -168,9 +197,9 @@ class _SessionReplayScreenState extends ConsumerState<SessionReplayScreen> {
   Widget _buildReplayMetric(String label, String value, Color color) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Text(value, style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 9, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
       ],
     );
   }

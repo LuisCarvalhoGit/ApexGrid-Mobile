@@ -47,6 +47,7 @@ dependencies:
   latlong2: ^0.9.1
   csv: ^8.0.0
   state_notifier: ^1.0.0
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

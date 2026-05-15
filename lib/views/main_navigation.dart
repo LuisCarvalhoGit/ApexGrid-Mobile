@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // NOVO IMPORT
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dashboard_screen.dart';
 import 'widgets/telemetry_map.dart';
 import 'history_screen.dart';
-import '../controllers/session_controller.dart'; // NOVO IMPORT
+import 'garage_screen.dart';
+import '../controllers/session_controller.dart';
 
-// Mudámos para ConsumerStatefulWidget para podermos ler o estado da gravação
 class MainNavigation extends ConsumerStatefulWidget {
   const MainNavigation({super.key});
 
@@ -20,11 +20,11 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
     const DashboardScreen(),
     const TelemetryMap(),
     const HistoryScreen(),
+    const GarageScreen(), // A Garagem é o índice 3
   ];
 
   @override
   Widget build(BuildContext context) {
-    // Lemos se estamos a gravar ou não
     final sessionState = ref.watch(sessionControllerProvider);
     final isRecording = sessionState == SessionState.recording;
 
@@ -33,7 +33,6 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
         index: _currentIndex,
         children: _screens,
       ),
-      // O NOSSO NOVO BOTÃO GLOBAL
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: isRecording ? Colors.redAccent : Colors.amberAccent,
         foregroundColor: Colors.black,
@@ -58,7 +57,6 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
           }
         },
       ),
-      // Colocamos o botão centrado e acima da barra de navegação
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       
       bottomNavigationBar: Container(
@@ -68,6 +66,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),
+          type: BottomNavigationBarType.fixed, // Mantém as cores estáveis com 4 itens!
           backgroundColor: Colors.black,
           selectedItemColor: Colors.amberAccent,
           unselectedItemColor: Colors.white38,
@@ -77,6 +76,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
             BottomNavigationBarItem(icon: Icon(Icons.speed), label: 'Painel'),
             BottomNavigationBarItem(icon: Icon(Icons.map_outlined), activeIcon: Icon(Icons.map), label: 'Navegação'),
             BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Histórico'),
+            BottomNavigationBarItem(icon: Icon(Icons.two_wheeler), label: 'Garagem'), // <--- NOVO BOTÃO AQUI
           ],
         ),
       ),

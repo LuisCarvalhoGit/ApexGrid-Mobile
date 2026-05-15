@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import '../controllers/history_controller.dart';
-import 'session_replay_screen.dart'; // NOVO IMPORT PARA O REPLAY
+import 'session_replay_screen.dart';
+import 'session_summary_screen.dart'; 
 
 class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
@@ -35,11 +36,11 @@ class HistoryScreen extends ConsumerWidget {
               // 1. ENVOLVEMOS O CARTÃO NUM GESTURE DETECTOR
               return GestureDetector(
                 onTap: () {
-                  // 2. NAVEGAMOS PARA O ECRÃ DE REPLAY PASSANDO O CSV
+                  // 2. A MÁGICA DA NAVEGAÇÃO AQUI: Vai primeiro para o Resumo!
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SessionReplayScreen(csvFilePath: session.csvFilePath),
+                      builder: (context) => SessionSummaryScreen(csvFilePath: session.csvFilePath),
                     ),
                   );
                 },
