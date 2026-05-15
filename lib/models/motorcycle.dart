@@ -3,32 +3,48 @@ class Motorcycle {
   final String brand;
   final String model;
   final int year;
-  final String category; // ex: Sport-Touring, Naked, Superbike
-  final String currentTires; // Vital para o grip nos segmentos
-  final double totalDistanceKmh; // Odómetro da app
+  final int engineCc;
+  final int weightKg; 
+  final bool isDefault; // A mota que está a ser gravada no Cockpit
+
+  // Métricas de Manutenção (Pit Stop)
+  final int currentOdometer;
+  final int lastOilChangeKm;
+  final int lastChainLubeKm;
+  final int lastTiresChangeKm;
 
   Motorcycle({
     required this.id,
     required this.brand,
     required this.model,
     required this.year,
-    required this.category,
-    required this.currentTires,
-    this.totalDistanceKmh = 0.0,
+    required this.engineCc,
+    required this.weightKg,
+    this.isDefault = false,
+    this.currentOdometer = 0,
+    this.lastOilChangeKm = 0,
+    this.lastChainLubeKm = 0,
+    this.lastTiresChangeKm = 0,
   });
 
   Motorcycle copyWith({
-    String? brand, String? model, int? year, 
-    String? category, String? currentTires, double? totalDistanceKmh,
+    String? id, String? brand, String? model, int? year,
+    int? engineCc, int? weightKg, bool? isDefault,
+    int? currentOdometer, int? lastOilChangeKm,
+    int? lastChainLubeKm, int? lastTiresChangeKm,
   }) {
     return Motorcycle(
-      id: id,
+      id: id ?? this.id,
       brand: brand ?? this.brand,
       model: model ?? this.model,
       year: year ?? this.year,
-      category: category ?? this.category,
-      currentTires: currentTires ?? this.currentTires,
-      totalDistanceKmh: totalDistanceKmh ?? this.totalDistanceKmh,
+      engineCc: engineCc ?? this.engineCc,
+      weightKg: weightKg ?? this.weightKg,
+      isDefault: isDefault ?? this.isDefault,
+      currentOdometer: currentOdometer ?? this.currentOdometer,
+      lastOilChangeKm: lastOilChangeKm ?? this.lastOilChangeKm,
+      lastChainLubeKm: lastChainLubeKm ?? this.lastChainLubeKm,
+      lastTiresChangeKm: lastTiresChangeKm ?? this.lastTiresChangeKm,
     );
   }
 }

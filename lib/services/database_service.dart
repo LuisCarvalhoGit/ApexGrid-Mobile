@@ -61,4 +61,9 @@ class DatabaseService {
 
     return List.generate(maps.length, (i) => SessionRecord.fromMap(maps[i]));
   }
+
+  Future<void> clearAllSessions() async {
+    final db = await database;
+    await db.delete('sessions'); // Apaga todos os registos da tabela
+  }
 }

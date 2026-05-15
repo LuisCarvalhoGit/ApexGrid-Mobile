@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math'; 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../models/telemetry_point.dart';
 import '../models/session_record.dart';
@@ -12,20 +13,26 @@ import 'history_controller.dart';
 import 'lean_angle_controller.dart';
 import '../models/session_data_point.dart';
 import 'location_controller.dart';
+import 'settings_controller.dart';
 
 enum SessionState { idle, recording }
+
+// NOVO: A ponte de comunicação entre os sensores reais e o Dashboard!
+final liveTelemetryProvider = StateProvider<SessionDataPoint>((ref) {
+  return SessionDataPoint(
+    timeMs: 0, leanAngle: 0.0, gForceX: 0.0, gForceY: 0.0, latitude: 0, longitude: 0, speedKmh: 0.0
+  );
+});
 
 class SessionController extends Notifier<SessionState> {
   final List<SessionDataPoint> _buffer = [];
   StreamSubscription<TelemetryPoint>? _subscription;
   DateTime? _sessionStartTime;
   
-  // Guarda o ângulo real e calibrado durante a viagem
   double _currentMaxLean = 0.0;
 
   @override
   SessionState build() {
-    // Ouve diretamente a fonte matemática pura, sem depender do gráfico!
     ref.listen<double>(leanAngleProvider, (previous, currentAngle) {
       if (state == SessionState.recording) {
         final absAngle = currentAngle.abs();
@@ -43,23 +50,32 @@ class SessionController extends Notifier<SessionState> {
     _sessionStartTime = DateTime.now();
     _currentMaxLean = 0.0; 
     state = SessionState.recording;
+
+    final settings = ref.read(settingsProvider);
+    if (settings.autoCalibrate) {
+      ref.read(leanAngleProvider.notifier).setZeroCalibration();
+    }
     
     _subscription = ref.read(filteredTelemetryStreamProvider).listen((point) {
-      // 2. Lemos o estado ATUAL do Ângulo e do GPS no momento exato deste pulso
       final currentLean = ref.read(leanAngleProvider);
       final currentLoc = ref.read(locationProvider);
       final timeMs = DateTime.now().difference(_sessionStartTime!).inMilliseconds;
 
-      // 3. Juntamos tudo no nosso novo formato de alta densidade
-      _buffer.add(SessionDataPoint(
+      final currentDataPoint = SessionDataPoint(
         timeMs: timeMs,
         leanAngle: currentLean,
         gForceX: point.x,
         gForceY: point.y,
         latitude: currentLoc.currentPosition?.latitude ?? 0.0,
         longitude: currentLoc.currentPosition?.longitude ?? 0.0,
-        speedKmh: currentLoc.speedKmh,
-      ));
+        speedKmh: currentLoc.speedKmh, // Atualiza a velocidade
+      );
+
+      // 1. Guardamos no ficheiro
+      _buffer.add(currentDataPoint);
+
+      // 2. NOVO: Disparamos o dado para a UI do Cockpit (Isto anima a mota e o velocímetro!)
+      ref.read(liveTelemetryProvider.notifier).state = currentDataPoint;
     });
   }
 
@@ -75,7 +91,6 @@ class SessionController extends Notifier<SessionState> {
     double maxG = 0.0;
     
     for (final point in _buffer) {
-      // Cálculo da Força-G combinada (Aceleração/Travagem Y + Força Lateral X)
       final gForce = sqrt(point.gForceX * point.gForceX + point.gForceY * point.gForceY);
       if (gForce > maxG) maxG = gForce;
     }
@@ -83,19 +98,22 @@ class SessionController extends Notifier<SessionState> {
     final record = SessionRecord(
       startTime: _sessionStartTime!,
       endTime: DateTime.now(),
-      maxLeanAngle: _currentMaxLean, // Usamos o nosso valor calibrado pelo Sensor Fusion!
+      maxLeanAngle: _currentMaxLean, 
       maxGForce: maxG,
       csvFilePath: savedPath,
     );
 
     await DatabaseService().insertSession(record);
-
-    // Invalida a cache do histórico. Da próxima vez que o utilizador
-    // abrir a aba, o Riverpod vai ler a base de dados de novo automaticamente!
     ref.invalidate(historyProvider);
     
     _buffer.clear();
     _sessionStartTime = null;
+
+    // NOVO: Faz reset ao painel (mota direita, 0km/h) quando terminas a viagem
+    ref.read(liveTelemetryProvider.notifier).state = SessionDataPoint(
+      timeMs: 0, leanAngle: 0.0, gForceX: 0.0, gForceY: 0.0, latitude: 0, longitude: 0, speedKmh: 0.0
+    );
+
     return true;
   }
 }

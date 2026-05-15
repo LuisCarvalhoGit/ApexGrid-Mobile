@@ -1,56 +1,57 @@
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/motorcycle.dart';
 
-class GarageState {
-  final List<Motorcycle> bikes;
-  final String activeBikeId;
-
-  GarageState({this.bikes = const [], this.activeBikeId = ''});
-
-  Motorcycle? get activeBike {
-    try {
-      return bikes.firstWhere((bike) => bike.id == activeBikeId);
-    } catch (e) {
-      return null;
-    }
+class GarageController extends Notifier<List<Motorcycle>> {
+  @override
+  List<Motorcycle> build() {
+    // Carrega a frota inicial (MVP Database)
+    return [
+      Motorcycle(
+        id: 'bike_01',
+        brand: 'Yamaha',
+        model: 'Tracer 7',
+        year: 2022,
+        engineCc: 689,
+        weightKg: 196,
+        isDefault: true,
+        currentOdometer: 14200,
+        lastOilChangeKm: 10000, // Óleo trocado aos 10k
+        lastChainLubeKm: 13800, // Corrente lubrificada há 400km
+        lastTiresChangeKm: 8000,
+      ),
+      // Podes adicionar mais motas aqui no futuro
+    ];
   }
 
-  GarageState copyWith({List<Motorcycle>? bikes, String? activeBikeId}) {
-    return GarageState(
-      bikes: bikes ?? this.bikes,
-      activeBikeId: activeBikeId ?? this.activeBikeId,
-    );
+  void setAsDefault(String id) {
+    state = state.map((bike) {
+      return bike.copyWith(isDefault: bike.id == id);
+    }).toList();
+  }
+
+  void updateOdometer(String id, int newOdometer) {
+    state = state.map((bike) {
+      if (bike.id == id && newOdometer >= bike.currentOdometer) {
+        return bike.copyWith(currentOdometer: newOdometer);
+      }
+      return bike;
+    }).toList();
+  }
+
+  void registerMaintenance(String id, String type) {
+    state = state.map((bike) {
+      if (bike.id == id) {
+        switch (type) {
+          case 'chain': return bike.copyWith(lastChainLubeKm: bike.currentOdometer);
+          case 'oil': return bike.copyWith(lastOilChangeKm: bike.currentOdometer);
+          case 'tires': return bike.copyWith(lastTiresChangeKm: bike.currentOdometer);
+        }
+      }
+      return bike;
+    }).toList();
   }
 }
 
-class GarageController extends StateNotifier<GarageState> {
-  GarageController() : super(GarageState()) {
-    _loadGarage();
-  }
-
-  void _loadGarage() {
-    // Simulação de carregamento de base de dados local (SQLite/Hive)
-    final defaultBike = Motorcycle(
-      id: 'moto_001',
-      brand: 'Yamaha',
-      model: 'Tracer 7',
-      year: 2022,
-      category: 'Sport-Touring',
-      currentTires: 'Michelin Road 6',
-      totalDistanceKmh: 1240.5,
-    );
-
-    state = state.copyWith(
-      bikes: [defaultBike],
-      activeBikeId: defaultBike.id,
-    );
-  }
-
-  void setActiveBike(String id) {
-    state = state.copyWith(activeBikeId: id);
-  }
-}
-
-final garageProvider = StateNotifierProvider<GarageController, GarageState>((ref) {
+final garageProvider = NotifierProvider<GarageController, List<Motorcycle>>(() {
   return GarageController();
 });

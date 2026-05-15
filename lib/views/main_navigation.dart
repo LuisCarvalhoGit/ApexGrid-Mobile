@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../controllers/session_controller.dart';
 import 'dashboard_screen.dart';
-import 'widgets/telemetry_map.dart';
 import 'history_screen.dart';
 import 'garage_screen.dart';
-import '../controllers/session_controller.dart';
+import 'settings_screen.dart'; // O novo ecrã
 
 class MainNavigation extends ConsumerStatefulWidget {
   const MainNavigation({super.key});
@@ -16,11 +16,12 @@ class MainNavigation extends ConsumerStatefulWidget {
 class _MainNavigationState extends ConsumerState<MainNavigation> {
   int _currentIndex = 0;
 
+  // Adicionámos a SettingsScreen à lista de ecrãs
   final List<Widget> _screens = [
     const DashboardScreen(),
-    const TelemetryMap(),
     const HistoryScreen(),
-    const GarageScreen(), // A Garagem é o índice 3
+    const GarageScreen(),
+    const SettingsScreen(), // Posição 3
   ];
 
   @override
@@ -29,55 +30,63 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
     final isRecording = sessionState == SessionState.recording;
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: isRecording ? Colors.redAccent : Colors.amberAccent,
-        foregroundColor: Colors.black,
-        icon: Icon(isRecording ? Icons.stop : Icons.fiber_manual_record),
-        label: Text(
-          isRecording ? 'PARAR TELEMETRIA' : 'INICIAR SESSÃO',
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-        onPressed: () async {
+      extendBody: true,
+      body: _screens[_currentIndex],
+      
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
           if (isRecording) {
-            final success = await ref.read(sessionControllerProvider.notifier).stopRecording();
-            if (context.mounted && success) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  backgroundColor: Colors.green,
-                  content: Text('Sessão guardada no Histórico!', style: TextStyle(color: Colors.white)),
-                ),
-              );
-            }
+            ref.read(sessionControllerProvider.notifier).stopRecording();
           } else {
             ref.read(sessionControllerProvider.notifier).startRecording();
           }
         },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05), width: 1)),
+        backgroundColor: isRecording ? Colors.redAccent : Colors.amberAccent,
+        elevation: 8,
+        shape: const CircleBorder(),
+        child: Icon(
+          isRecording ? Icons.stop_rounded : Icons.play_arrow_rounded,
+          size: 36,
+          color: Colors.black,
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          type: BottomNavigationBarType.fixed, // Mantém as cores estáveis com 4 itens!
-          backgroundColor: Colors.black,
-          selectedItemColor: Colors.amberAccent,
-          unselectedItemColor: Colors.white38,
-          showSelectedLabels: true,
-          showUnselectedLabels: false,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.speed), label: 'Painel'),
-            BottomNavigationBarItem(icon: Icon(Icons.map_outlined), activeIcon: Icon(Icons.map), label: 'Navegação'),
-            BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Histórico'),
-            BottomNavigationBarItem(icon: Icon(Icons.two_wheeler), label: 'Garagem'), // <--- NOVO BOTÃO AQUI
-          ],
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+
+      bottomNavigationBar: BottomAppBar(
+        color: const Color(0xFF0D0D0D),
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 10.0,
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(
+                icon: Icon(Icons.speed, 
+                  color: _currentIndex == 0 ? Colors.cyanAccent : Colors.white24),
+                onPressed: () => setState(() => _currentIndex = 0),
+              ),
+              IconButton(
+                icon: Icon(Icons.history, 
+                  color: _currentIndex == 1 ? Colors.cyanAccent : Colors.white24),
+                onPressed: () => setState(() => _currentIndex = 1),
+              ),
+              
+              const SizedBox(width: 48),
+
+              IconButton(
+                icon: Icon(Icons.two_wheeler, 
+                  color: _currentIndex == 2 ? Colors.cyanAccent : Colors.white24),
+                onPressed: () => setState(() => _currentIndex = 2),
+              ),
+              // Agora a engrenagem funciona e muda para a aba de Definições
+              IconButton(
+                icon: Icon(Icons.settings_outlined, 
+                  color: _currentIndex == 3 ? Colors.cyanAccent : Colors.white24),
+                onPressed: () => setState(() => _currentIndex = 3), 
+              ),
+            ],
+          ),
         ),
       ),
     );
