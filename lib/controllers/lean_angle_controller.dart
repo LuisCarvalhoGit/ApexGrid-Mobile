@@ -8,18 +8,18 @@ class LeanAngleController extends Notifier<double> {
   double _calibrationOffset = 0.0;
   AccelerometerEvent? _lastAcc;
   
-  // Guardamos as subscrições para as poder cancelar depois
   StreamSubscription<AccelerometerEvent>? _accSub;
   StreamSubscription<GyroscopeEvent>? _gyroSub;
 
+  // Buffer para captar vários pontos e calcular uma calibração perfeita
+  final List<double> _calibrationBuffer = [];
+
   @override
   double build() {
-    // 1. Escutamos o acelerómetro puro
     _accSub = accelerometerEventStream(samplingPeriod: SensorInterval.gameInterval).listen((acc) {
       _lastAcc = acc;
     });
 
-    // 2. Escutamos o giroscópio e emitimos o ângulo atualizado
     _gyroSub = gyroscopeEventStream(samplingPeriod: SensorInterval.gameInterval).listen((gyro) {
       if (_lastAcc == null) return;
 
@@ -28,23 +28,31 @@ class LeanAngleController extends Notifier<double> {
         gyroX: gyro.x, gyroY: gyro.y, gyroZ: gyro.z,
       );
 
-      // Atualizamos o estado global com o ângulo já calibrado
+      // Se estivermos a recolher dados para calibrar, guardamos no buffer
+      if (_calibrationBuffer.length < 20 && _calibrationBuffer.isNotEmpty) {
+        _calibrationBuffer.add(rawAngle);
+        if (_calibrationBuffer.length == 20) {
+          // Quando atinge 20 amostras, calcula a média para ignorar vibrações do motor
+          _calibrationOffset = _calibrationBuffer.reduce((a, b) => a + b) / _calibrationBuffer.length;
+          _calibrationBuffer.clear();
+        }
+      }
+
       state = rawAngle - _calibrationOffset;
     });
 
-    // 3. SEGURANÇA: Cancela as leituras se o provider for destruído
     ref.onDispose(() {
       _accSub?.cancel();
       _gyroSub?.cancel();
     });
 
-    return 0.0; // Estado inicial (0 graus)
+    return 0.0;
   }
 
-  // A função que os botões de calibragem vão chamar!
+  // Nova calibração "Senior": Em vez de confiar em 1 leitura, inicia uma recolha de 20 leituras (cerca de 0.4 seg)
   void setZeroCalibration() {
-    _calibrationOffset += state;
-    state = 0.0;
+    _calibrationBuffer.clear();
+    _calibrationBuffer.add(state + _calibrationOffset); // Inicia o trigger
   }
 }
 

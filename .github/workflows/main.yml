@@ -1,0 +1,55 @@
+name: ApexGrid CI/CD Pipeline
+
+# Corre sempre que fazes Push para a branch main
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    name: Build & Test (Android)
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Faz o clone do teu repositório
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. Prepara o Java (necessário para Android)
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. Instala o SDK do Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x' # Ajusta para a tua versão, ou deixa dinâmico
+          channel: 'stable'
+
+      # 4. Descarrega pacotes
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 5. Corre a análise de código à procura de erros
+      - name: Analyze Code
+        run: flutter analyze
+
+      # 6. Corre os teus testes (ex: low_pass_filter_test.dart)
+      - name: Run Tests
+        run: flutter test
+
+      # 7. Compila a aplicação para Android
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 8. Guarda o APK gerado nos Artifacts para poderes descarregar!
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: ApexGrid-Release-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
