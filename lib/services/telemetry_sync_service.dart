@@ -54,7 +54,7 @@ class TelemetrySyncService {
 
       // Validar
       if (response.statusCode == 201) {
-        debugPrint('✅ Viagem sincronizada com sucesso! ID gerado: ${response.data['id']}');
+        debugPrint('✅ Viagem sincronizada com sucesso! ID gerado: ${response.data['guid']}');
         return true;
       }
 

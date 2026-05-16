@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math'; 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -7,6 +9,7 @@ import '../models/telemetry_point.dart';
 import '../models/session_record.dart';
 import '../services/csv_storage_service.dart';
 import '../services/database_service.dart';
+import '../services/telemetry_sync_service.dart';
 import '../main.dart'; 
 
 import 'history_controller.dart';
@@ -20,7 +23,7 @@ import 'garage_controller.dart'; // Para aceder à frota
 
 enum SessionState { idle, recording }
 
-// NOVO: A ponte de comunicação entre os sensores reais e o Dashboard!
+// A ponte de comunicação entre os sensores reais e o Dashboard!
 final liveTelemetryProvider = StateProvider<SessionDataPoint>((ref) {
   return SessionDataPoint(
     timeMs: 0, leanAngle: 0.0, gForceX: 0.0, gForceY: 0.0, latitude: 0, longitude: 0, speedKmh: 0.0
@@ -74,10 +77,10 @@ class SessionController extends Notifier<SessionState> {
         speedKmh: currentLoc.speedKmh, // Atualiza a velocidade
       );
 
-      // 1. Guardamos no ficheiro
+      // Guardamos no ficheiro
       _buffer.add(currentDataPoint);
 
-      // 2. NOVO: Disparamos o dado para a UI do Cockpit (Isto anima a mota e o velocímetro!)
+      // Disparamos o dado para a UI do Cockpit
       ref.read(liveTelemetryProvider.notifier).state = currentDataPoint;
     });
   }
@@ -92,16 +95,39 @@ class SessionController extends Notifier<SessionState> {
     final savedPath = await csvService.saveSession(_buffer);
     
     double maxG = 0.0;
+    double maxSpeed = 0.0;
+    double totalDistanceKm = 0.0;
+    const distanceCalc = Distance();
     
-    for (final point in _buffer) {
+    for (int i = 0; i < _buffer.length; i++) {
+      final point = _buffer[i];
+      
+      // Velocidade e Força G
+      if (point.speedKmh > maxSpeed) maxSpeed = point.speedKmh;
       final gForce = sqrt(point.gForceX * point.gForceX + point.gForceY * point.gForceY);
       if (gForce > maxG) maxG = gForce;
+
+      // Distância de GPS
+      if (i > 0) {
+        final prev = _buffer[i - 1];
+        if (prev.latitude != 0.0 && point.latitude != 0.0) {
+          final meters = distanceCalc.as(LengthUnit.Meter, 
+            LatLng(prev.latitude, prev.longitude), 
+            LatLng(point.latitude, point.longitude)
+          );
+          totalDistanceKm += meters / 1000.0; 
+        }
+      }
     }
 
+    // Congelamos o tempo de fim
+    final endTime = DateTime.now();
+
+    // Grava no SQL Local do telemóvel (Histórico)
     final record = SessionRecord(
-      title: "Sem Titulo",
+      title: "Nova Viagem",
       startTime: _sessionStartTime!,
-      endTime: DateTime.now(),
+      endTime: endTime,
       maxLeanAngle: _currentMaxLean, 
       maxGForce: maxG,
       csvFilePath: savedPath,
@@ -110,37 +136,53 @@ class SessionController extends Notifier<SessionState> {
     await DatabaseService().insertSession(record);
     ref.invalidate(historyProvider);
 
-    // --- LÓGICA DE ATUALIZAÇÃO DO ODÓMETRO ---
-    double totalDistanceKm = 0.0;
-    const distanceCalc = Distance(); // Motor de cálculo de distâncias do latlong2
+    // Lógica da Garagem e Odómetro
+    final fleet = ref.read(garageProvider);
+    String bikeName = 'Mota Desconhecida';
     
-    // Percorremos os pontos do GPS da sessão para calcular a distância
-    for (int i = 1; i < _buffer.length; i++) {
-      final prev = _buffer[i - 1];
-      final curr = _buffer[i];
+    if (fleet.isNotEmpty) {
+      final defaultBike = fleet.firstWhere((b) => b.isDefault, orElse: () => fleet.first);
+      bikeName = '${defaultBike.brand} ${defaultBike.model}'; // Ex: "Yamaha Tracer 7"
       
-      // Ignora pontos sem sinal de GPS (0.0)
-      if (prev.latitude != 0.0 && curr.latitude != 0.0) {
-        final meters = distanceCalc.as(LengthUnit.Meter, 
-          LatLng(prev.latitude, prev.longitude), 
-          LatLng(curr.latitude, curr.longitude)
-        );
-        totalDistanceKm += meters / 1000.0; // Converte para KM
+      if (totalDistanceKm >= 1.0) {
+        final newOdometer = defaultBike.currentOdometer + totalDistanceKm.round(); 
+        ref.read(garageProvider.notifier).updateOdometer(defaultBike.id, newOdometer);
       }
     }
 
-    // Procura a mota principal e soma os quilómetros
-    final fleet = ref.read(garageProvider);
-    if (fleet.isNotEmpty && totalDistanceKm >= 1.0) {
-      final defaultBike = fleet.firstWhere((b) => b.isDefault, orElse: () => fleet.first);
-      final newOdometer = defaultBike.currentOdometer + totalDistanceKm.round(); // Arredondamos os KM
-      ref.read(garageProvider.notifier).updateOdometer(defaultBike.id, newOdometer);
+    // =======================================================
+    // 5. NOVO: O TIRO PARA O NOSSO SERVIDOR C# / MINIO
+    // =======================================================
+    try {
+      final syncService = TelemetrySyncService();
+      
+      // Corremos de forma assíncrona para não bloquear a UI
+      final syncSuccess = await syncService.uploadRide(
+        userId: '3fa85f64-5717-4562-b3fc-2c963f66afa6', // Guid de teste (Igual ao ficheiro .http)
+        motorcycleModel: bikeName,
+        startTime: _sessionStartTime!,
+        endTime: endTime,
+        totalDistanceKm: totalDistanceKm,
+        maxSpeedKmh: maxSpeed,
+        maxLeanAngleDegrees: _currentMaxLean,
+        maxGForce: maxG,
+        csvFile: File(savedPath),
+      );
+
+      if (syncSuccess) {
+        debugPrint("🚀 BACKEND: Upload e sincronização concluídos com sucesso!");
+      } else {
+        debugPrint("⚠️ BACKEND: Falha ao enviar a viagem para o servidor.");
+      }
+    } catch (e) {
+      debugPrint("❌ BACKEND: Erro ao tentar sincronizar: $e");
     }
+    // =======================================================
     
+    // Limpa a memória RAM e reseta o dashboard
     _buffer.clear();
     _sessionStartTime = null;
 
-    // NOVO: Faz reset ao painel (mota direita, 0km/h) quando terminas a viagem
     ref.read(liveTelemetryProvider.notifier).state = SessionDataPoint(
       timeMs: 0, leanAngle: 0.0, gForceX: 0.0, gForceY: 0.0, latitude: 0, longitude: 0, speedKmh: 0.0
     );
