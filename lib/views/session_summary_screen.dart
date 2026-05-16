@@ -58,7 +58,7 @@ class SessionSummaryScreen extends ConsumerWidget {
                         Polyline(
                           points: data.route,
                           strokeWidth: 4.0,
-                          color: Colors.amberAccent.withOpacity(0.8),
+                          color: Colors.amberAccent.withValues(alpha:0.8),
                         ),
                       ],
                     ),
@@ -155,9 +155,15 @@ class SessionSummaryScreen extends ConsumerWidget {
 
   Widget _buildSegmentCard(SegmentEffort effort) {
     Color scoreColor;
-    if (effort.smoothnessScore >= 90) scoreColor = Colors.amberAccent; // Ouro
-    else if (effort.smoothnessScore >= 75) scoreColor = Colors.grey[300]!; // Prata
-    else scoreColor = Colors.deepOrangeAccent; // Bronze/Aviso
+    if (effort.smoothnessScore >= 90) {
+      scoreColor = Colors.amberAccent; // Ouro
+     } 
+    else if (effort.smoothnessScore >= 75) {
+      scoreColor = Colors.grey[300]!; // Prata
+    }
+    else {
+      scoreColor = Colors.deepOrangeAccent; // Bronze/Aviso
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -165,7 +171,7 @@ class SessionSummaryScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF121212),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scoreColor.withOpacity(0.3), width: 1),
+        border: Border.all(color: scoreColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -29,7 +29,7 @@ class RealtimeChart extends ConsumerWidget {
             icon: const Icon(Icons.center_focus_strong, color: Colors.greenAccent, size: 16),
             label: const Text('CALIBRAR 0°', style: TextStyle(color: Colors.greenAccent)),
             style: TextButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.1),
+              backgroundColor: Colors.white.withValues(alpha:0.1),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               minimumSize: Size.zero, 
               tapTargetSize: MaterialTapTargetSize.shrinkWrap, // Fica compacto
@@ -75,7 +75,7 @@ class RealtimeChart extends ConsumerWidget {
                         horizontalInterval: 15,
                         getDrawingHorizontalLine: (value) => value == 0 
                             ? const FlLine(color: Colors.greenAccent, strokeWidth: 2)
-                            : FlLine(color: Colors.white.withOpacity(0.1), strokeWidth: 1),
+                            : FlLine(color: Colors.white.withValues(alpha:0.1), strokeWidth: 1),
                       ),
                       borderData: FlBorderData(show: false),
                     ),

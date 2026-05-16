@@ -20,7 +20,7 @@ class GForceBar extends StatelessWidget {
     return Container(
       height: isExpanded ? 10 : 6,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha:0.05),
         borderRadius: BorderRadius.circular(2),
       ),
       alignment: isLeft ? Alignment.centerRight : Alignment.centerLeft,
@@ -30,7 +30,7 @@ class GForceBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.amberAccent,
             boxShadow: [
-              BoxShadow(color: Colors.amberAccent.withOpacity(0.3), blurRadius: 8)
+              BoxShadow(color: Colors.amberAccent.withValues(alpha:0.3), blurRadius: 8)
             ],
           ),
         ),

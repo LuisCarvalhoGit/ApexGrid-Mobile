@@ -4,7 +4,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../controllers/csv_replay_controller.dart';
-import '../models/session_data_point.dart';
 import '../services/map_matching_service.dart'; // Garante que este ficheiro existe
 
 class SessionReplayScreen extends ConsumerStatefulWidget {
@@ -126,7 +125,7 @@ class _SessionReplayScreenState extends ConsumerState<SessionReplayScreen> {
                     Polyline(
                       points: _snappedRoute,
                       strokeWidth: 5.0,
-                      color: Colors.cyanAccent.withOpacity(0.6),
+                      color: Colors.cyanAccent.withValues(alpha:0.6),
                       strokeCap: StrokeCap.round,
                     ),
                   ],
@@ -154,7 +153,7 @@ class _SessionReplayScreenState extends ConsumerState<SessionReplayScreen> {
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
             decoration: BoxDecoration(
               color: const Color(0xFF121212),
-              border: Border(top: BorderSide(color: Colors.amberAccent.withOpacity(0.3), width: 2)),
+              border: Border(top: BorderSide(color: Colors.amberAccent.withValues(alpha:0.3), width: 2)),
             ),
             child: Column(
               children: [

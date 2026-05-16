@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
-// O Estado que a nossa UI vai observar
 class LocationState {
   final LatLng? currentPosition;
   final double speedKmh;
@@ -26,12 +25,18 @@ class LocationController extends Notifier<LocationState> {
   @override
   LocationState build() {
     _initLocation();
+
+    // A SOLUÇÃO: Fechar a stream quando o controlador for descartado
+    ref.onDispose(() {
+      _positionStream?.cancel();
+    });
+
     return LocationState();
   }
 
   Future<void> _initLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return; // O GPS está desligado
+    if (!serviceEnabled) return; 
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
@@ -41,17 +46,15 @@ class LocationController extends Notifier<LocationState> {
 
     if (permission == LocationPermission.deniedForever) return;
 
-    // Configuração de alta precisão desportiva para motos
     const locationSettings = LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 2, // Atualiza a cada 2 metros movidos
+      distanceFilter: 2, 
     );
 
-    // Começa a escutar o satélite
+    // Como agora chamamos _positionStream.cancel() ali em cima, o linter já vai ficar feliz!
     _positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position) {
       final newPoint = LatLng(position.latitude, position.longitude);
       
-      // Converte a velocidade de m/s para km/h (ignorando valores negativos/ruído)
       final speed = (position.speed > 0.5) ? position.speed * 3.6 : 0.0;
       
       final updatedRoute = List<LatLng>.from(state.route)..add(newPoint);

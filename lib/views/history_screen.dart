@@ -87,6 +87,7 @@ class HistoryScreen extends ConsumerWidget {
           TextButton(
             onPressed: () async {
               await DatabaseService().updateSessionTitle(id, controller.text);
+              if (!context.mounted) return;
               ref.invalidate(historyProvider);
               Navigator.pop(ctx);
             },
@@ -110,6 +111,7 @@ class HistoryScreen extends ConsumerWidget {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () async {
               await DatabaseService().deleteSession(id);
+              if (!context.mounted) return;
               ref.invalidate(historyProvider);
               Navigator.pop(ctx);
             },

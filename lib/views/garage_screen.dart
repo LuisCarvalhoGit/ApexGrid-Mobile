@@ -86,7 +86,7 @@ class _GarageScreenState extends ConsumerState<GarageScreen> {
                     if (bike.isDefault)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.amberAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.amberAccent)),
+                        decoration: BoxDecoration(color: Colors.amberAccent.withValues(alpha:0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.amberAccent)),
                         child: const Text('ATIVA', style: TextStyle(color: Colors.amberAccent, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
                       )
                     else
@@ -121,7 +121,7 @@ class _GarageScreenState extends ConsumerState<GarageScreen> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.02),
+          color: Colors.white.withValues(alpha:0.02),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white10, style: BorderStyle.none),
         ),
@@ -210,7 +210,7 @@ class _GarageScreenState extends ConsumerState<GarageScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF121212),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha:0.05)),
       ),
       child: Column(
         children: [
@@ -226,7 +226,7 @@ class _GarageScreenState extends ConsumerState<GarageScreen> {
                   onPressed: () => _showMaintenanceHistory(bike, type),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    side: BorderSide(color: hasHistory ? Colors.white24 : Colors.cyanAccent.withOpacity(0.5)),
+                    side: BorderSide(color: hasHistory ? Colors.white24 : Colors.cyanAccent.withValues(alpha:0.5)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                   ),
                   child: Text(hasHistory ? 'HISTÓRICO' : 'REGISTAR', style: TextStyle(color: hasHistory ? Colors.white70 : Colors.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -257,7 +257,7 @@ class _GarageScreenState extends ConsumerState<GarageScreen> {
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: percentage,
-                backgroundColor: Colors.white.withOpacity(0.05),
+                backgroundColor: Colors.white.withValues(alpha:0.05),
                 color: barColor,
                 minHeight: 6,
               ),

@@ -48,14 +48,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             height: panelHeight,
             child: GestureDetector(
               onVerticalDragEnd: (details) {
-                if (details.primaryVelocity! < 0) _togglePanel(true);
-                else if (details.primaryVelocity! > 0) _togglePanel(false);
+                if (details.primaryVelocity! < 0) {
+                  _togglePanel(true);
+                }
+                else if (details.primaryVelocity! > 0) { 
+                  _togglePanel(false);
+                }
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0A0A0A).withOpacity(0.95),
+                  color: const Color(0xFF0A0A0A).withValues(alpha:0.95),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                  border: Border(top: BorderSide(color: Colors.cyanAccent.withOpacity(0.3), width: 1)),
+                  border: Border(top: BorderSide(color: Colors.cyanAccent.withValues(alpha:0.3), width: 1)),
                   boxShadow: const [BoxShadow(color: Colors.black87, blurRadius: 20, spreadRadius: 5)],
                 ),
                 child: Column(

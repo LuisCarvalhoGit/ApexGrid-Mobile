@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../models/session_data_point.dart';
+import 'package:flutter/foundation.dart';
 
 class MapMatchingService {
   static Future<List<LatLng>> snapToRoads(List<SessionDataPoint> timeline) async {
@@ -47,10 +48,10 @@ class MapMatchingService {
           return coords.map((c) => LatLng(c[1].toDouble(), c[0].toDouble())).toList();
         }
       } else {
-        print('OSRM falhou com status: ${response.statusCode}. A usar rota normal.');
+        debugPrint('OSRM falhou com status: ${response.statusCode}. A usar rota normal.');
       }
     } catch (e) {
-      print('Erro no Map Matching: $e');
+      debugPrint('Erro no Map Matching: $e');
     }
     
     // Fallback: Se não houver internet, devolve a linha normal

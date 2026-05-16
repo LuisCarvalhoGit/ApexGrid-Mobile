@@ -41,14 +41,16 @@ class SettingsScreen extends ConsumerWidget {
 
           _buildSectionHeader('TELEMETRIA E SENSORES'),
           SwitchListTile(
-            activeColor: Colors.cyanAccent,
+            // ATUALIZAÇÃO 1: 'activeColor' mudou para 'activeThumbColor' no SDK mais recente
+            activeThumbColor: Colors.cyanAccent,
             title: const Text('Gravação a 50Hz (Alta Precisão)', style: TextStyle(color: Colors.white)),
             subtitle: const Text('Desativa para poupar bateria e espaço.', style: TextStyle(color: Colors.white54, fontSize: 12)),
             value: settings.highFrequency,
             onChanged: (val) => settingsNotifier.toggleHighFreq(val),
           ),
           SwitchListTile(
-            activeColor: Colors.cyanAccent,
+            // ATUALIZAÇÃO 2: 'activeColor' mudou para 'activeThumbColor'
+            activeThumbColor: Colors.cyanAccent,
             title: const Text('Autocalibração ao Iniciar', style: TextStyle(color: Colors.white)),
             subtitle: const Text('Define o ângulo 0° automaticamente ao dar Start.', style: TextStyle(color: Colors.white54, fontSize: 12)),
             value: settings.autoCalibrate,
@@ -65,7 +67,8 @@ class SettingsScreen extends ConsumerWidget {
 
           _buildSectionHeader('MAPAS E NAVEGAÇÃO'),
           SwitchListTile(
-            activeColor: Colors.amberAccent,
+            // ATUALIZAÇÃO 3: 'activeColor' mudou para 'activeThumbColor'
+            activeThumbColor: Colors.amberAccent,
             title: const Text('Segmentos Offline', style: TextStyle(color: Colors.white)),
             subtitle: const Text('Cache da região: Vila Real e Norte', style: TextStyle(color: Colors.white54, fontSize: 12)),
             value: settings.offlineMaps,
@@ -146,9 +149,18 @@ class SettingsScreen extends ConsumerWidget {
       return;
     }
     
-    // Pega nos ficheiros CSV todos e abre a janela de partilha nativa do telemóvel
     final files = sessions.map((s) => XFile(s.csvFilePath)).toList();
-    await Share.shareXFiles(files, text: 'Backup de Telemetria ApexGrid');
+    final box = context.findRenderObject() as RenderBox?;
+    
+    // A SINTAXE NOVA DO SHARE_PLUS
+    await SharePlus.instance.share(
+      ShareParams(
+        files: files,
+        text: 'Backup de Telemetria ApexGrid',
+        // O sharePositionOrigin continua a ser obrigatório para não dar crash no iPad
+        sharePositionOrigin: box != null ? (box.localToGlobal(Offset.zero) & box.size) : null,
+      ),
+    );
   }
 
   void _clearHistory(BuildContext context, WidgetRef ref) {

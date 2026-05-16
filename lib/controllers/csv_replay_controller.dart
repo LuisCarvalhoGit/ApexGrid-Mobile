@@ -1,7 +1,5 @@
 import 'dart:io';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:state_notifier/state_notifier.dart';
 import '../models/session_data_point.dart';
 
 // 1. O ESTADO (Simples e funcional)
