@@ -15,6 +15,9 @@ import '../models/session_data_point.dart';
 import 'location_controller.dart';
 import 'settings_controller.dart';
 
+import 'package:latlong2/latlong.dart'; // Para os cálculos de GPS
+import 'garage_controller.dart'; // Para aceder à frota
+
 enum SessionState { idle, recording }
 
 // NOVO: A ponte de comunicação entre os sensores reais e o Dashboard!
@@ -96,6 +99,7 @@ class SessionController extends Notifier<SessionState> {
     }
 
     final record = SessionRecord(
+      title: "Sem Titulo",
       startTime: _sessionStartTime!,
       endTime: DateTime.now(),
       maxLeanAngle: _currentMaxLean, 
@@ -105,6 +109,33 @@ class SessionController extends Notifier<SessionState> {
 
     await DatabaseService().insertSession(record);
     ref.invalidate(historyProvider);
+
+    // --- LÓGICA DE ATUALIZAÇÃO DO ODÓMETRO ---
+    double totalDistanceKm = 0.0;
+    const distanceCalc = Distance(); // Motor de cálculo de distâncias do latlong2
+    
+    // Percorremos os pontos do GPS da sessão para calcular a distância
+    for (int i = 1; i < _buffer.length; i++) {
+      final prev = _buffer[i - 1];
+      final curr = _buffer[i];
+      
+      // Ignora pontos sem sinal de GPS (0.0)
+      if (prev.latitude != 0.0 && curr.latitude != 0.0) {
+        final meters = distanceCalc.as(LengthUnit.Meter, 
+          LatLng(prev.latitude, prev.longitude), 
+          LatLng(curr.latitude, curr.longitude)
+        );
+        totalDistanceKm += meters / 1000.0; // Converte para KM
+      }
+    }
+
+    // Procura a mota principal e soma os quilómetros
+    final fleet = ref.read(garageProvider);
+    if (fleet.isNotEmpty && totalDistanceKm >= 1.0) {
+      final defaultBike = fleet.firstWhere((b) => b.isDefault, orElse: () => fleet.first);
+      final newOdometer = defaultBike.currentOdometer + totalDistanceKm.round(); // Arredondamos os KM
+      ref.read(garageProvider.notifier).updateOdometer(defaultBike.id, newOdometer);
+    }
     
     _buffer.clear();
     _sessionStartTime = null;

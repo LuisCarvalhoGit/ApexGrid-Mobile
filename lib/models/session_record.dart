@@ -1,5 +1,6 @@
 class SessionRecord {
   final int? id;
+  final String? title; 
   final DateTime startTime;
   final DateTime endTime;
   final double maxLeanAngle;
@@ -8,6 +9,7 @@ class SessionRecord {
 
   SessionRecord({
     this.id,
+    this.title, 
     required this.startTime,
     required this.endTime,
     required this.maxLeanAngle,
@@ -15,12 +17,11 @@ class SessionRecord {
     required this.csvFilePath,
   });
 
-  Duration get duration => endTime.difference(startTime);
-
-  // Converte o Objeto para um Mapa (necessário para guardar no SQLite)
+  // Converte a Sessão para um Mapa para o SQLite
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'title': title, 
       'startTime': startTime.toIso8601String(),
       'endTime': endTime.toIso8601String(),
       'maxLeanAngle': maxLeanAngle,
@@ -29,15 +30,16 @@ class SessionRecord {
     };
   }
 
-  // Constrói o Objeto a partir de um Mapa (necessário quando lemos do SQLite)
+  // Cria uma Sessão a partir dos dados do SQLite
   factory SessionRecord.fromMap(Map<String, dynamic> map) {
     return SessionRecord(
-      id: map['id'] as int?,
-      startTime: DateTime.parse(map['startTime'] as String),
-      endTime: DateTime.parse(map['endTime'] as String),
-      maxLeanAngle: map['maxLeanAngle'] as double,
-      maxGForce: map['maxGForce'] as double,
-      csvFilePath: map['csvFilePath'] as String,
+      id: map['id'],
+      title: map['title'], 
+      startTime: DateTime.parse(map['startTime']),
+      endTime: DateTime.parse(map['endTime']),
+      maxLeanAngle: map['maxLeanAngle'],
+      maxGForce: map['maxGForce'],
+      csvFilePath: map['csvFilePath'],
     );
   }
 }

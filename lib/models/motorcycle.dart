@@ -1,17 +1,31 @@
+class MaintenanceEvent {
+  final String id;
+  final DateTime date;
+  final int odometerAtEvent;
+  final String notes;
+
+  MaintenanceEvent({
+    required this.id,
+    required this.date,
+    required this.odometerAtEvent,
+    this.notes = '',
+  });
+}
+
 class Motorcycle {
   final String id;
   final String brand;
   final String model;
   final int year;
   final int engineCc;
-  final int weightKg; 
-  final bool isDefault; // A mota que está a ser gravada no Cockpit
-
-  // Métricas de Manutenção (Pit Stop)
+  final int weightKg;
   final int currentOdometer;
-  final int lastOilChangeKm;
-  final int lastChainLubeKm;
-  final int lastTiresChangeKm;
+  final bool isDefault;
+
+  // Históricos detalhados
+  final List<MaintenanceEvent> oilHistory;
+  final List<MaintenanceEvent> chainHistory;
+  final List<MaintenanceEvent> tiresHistory;
 
   Motorcycle({
     required this.id,
@@ -20,31 +34,37 @@ class Motorcycle {
     required this.year,
     required this.engineCc,
     required this.weightKg,
+    required this.currentOdometer,
     this.isDefault = false,
-    this.currentOdometer = 0,
-    this.lastOilChangeKm = 0,
-    this.lastChainLubeKm = 0,
-    this.lastTiresChangeKm = 0,
+    this.oilHistory = const [],
+    this.chainHistory = const [],
+    this.tiresHistory = const [],
   });
 
+  // Métodos auxiliares para obter o último registo
+  int get lastOilKm => oilHistory.isEmpty ? 0 : oilHistory.last.odometerAtEvent;
+  int get lastChainKm => chainHistory.isEmpty ? 0 : chainHistory.last.odometerAtEvent;
+  int get lastTiresKm => tiresHistory.isEmpty ? 0 : tiresHistory.last.odometerAtEvent;
+
   Motorcycle copyWith({
-    String? id, String? brand, String? model, int? year,
-    int? engineCc, int? weightKg, bool? isDefault,
-    int? currentOdometer, int? lastOilChangeKm,
-    int? lastChainLubeKm, int? lastTiresChangeKm,
+    String? brand, String? model, int? year, int? engineCc, 
+    int? weightKg, int? currentOdometer, bool? isDefault,
+    List<MaintenanceEvent>? oilHistory,
+    List<MaintenanceEvent>? chainHistory,
+    List<MaintenanceEvent>? tiresHistory,
   }) {
     return Motorcycle(
-      id: id ?? this.id,
+      id: id,
       brand: brand ?? this.brand,
       model: model ?? this.model,
       year: year ?? this.year,
       engineCc: engineCc ?? this.engineCc,
       weightKg: weightKg ?? this.weightKg,
-      isDefault: isDefault ?? this.isDefault,
       currentOdometer: currentOdometer ?? this.currentOdometer,
-      lastOilChangeKm: lastOilChangeKm ?? this.lastOilChangeKm,
-      lastChainLubeKm: lastChainLubeKm ?? this.lastChainLubeKm,
-      lastTiresChangeKm: lastTiresChangeKm ?? this.lastTiresChangeKm,
+      isDefault: isDefault ?? this.isDefault,
+      oilHistory: oilHistory ?? this.oilHistory,
+      chainHistory: chainHistory ?? this.chainHistory,
+      tiresHistory: tiresHistory ?? this.tiresHistory,
     );
   }
 }

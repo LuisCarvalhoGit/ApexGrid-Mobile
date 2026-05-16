@@ -24,20 +24,27 @@ class DatabaseService {
     // Abre (ou cria) a base de dados
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Aumenta a versão para 2 se já tiveres a app instalada
       onCreate: (db, version) async {
-        // Cria a tabela com linguagem SQL pura (Gold Standard para performance relacional)
         await db.execute('''
           CREATE TABLE sessions(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            startTime TEXT NOT NULL,
-            endTime TEXT NOT NULL,
-            maxLeanAngle REAL NOT NULL,
-            maxGForce REAL NOT NULL,
-            csvFilePath TEXT NOT NULL
+            title TEXT,           --- NOVO: Coluna para o título
+            startTime TEXT,
+            endTime TEXT,
+            maxLeanAngle REAL,
+            maxGForce REAL,
+            csvFilePath TEXT
           )
         ''');
       },
+      // Se a base de dados já existir, isto força a recriar a tabela com a nova coluna.
+      // NOTA: Para um projeto final, usaríamos scripts de migração, mas para o MVP isto é o mais prático!
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE sessions ADD COLUMN title TEXT');
+        }
+      }
     );
   }
 
@@ -65,5 +72,26 @@ class DatabaseService {
   Future<void> clearAllSessions() async {
     final db = await database;
     await db.delete('sessions'); // Apaga todos os registos da tabela
+  }
+
+  // Elimina uma sessão específica pelo ID
+  Future<void> deleteSession(int id) async {
+    final db = await database;
+    await db.delete(
+      'sessions',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // Atualiza apenas o título de uma sessão
+  Future<void> updateSessionTitle(int id, String newTitle) async {
+    final db = await database;
+    await db.update(
+      'sessions',
+      {'title': newTitle},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 }
