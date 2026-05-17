@@ -6,6 +6,9 @@ class SessionRecord {
   final double maxLeanAngle;
   final double maxGForce;
   final String csvFilePath;
+  final double totalDistanceKm;
+  final double maxSpeedKmh;
+  final bool isSynced;
 
   SessionRecord({
     this.id,
@@ -15,6 +18,9 @@ class SessionRecord {
     required this.maxLeanAngle,
     required this.maxGForce,
     required this.csvFilePath,
+    required this.totalDistanceKm,
+    required this.maxSpeedKmh,
+    this.isSynced = false,
   });
 
   // Converte a Sessão para um Mapa para o SQLite
@@ -27,6 +33,9 @@ class SessionRecord {
       'maxLeanAngle': maxLeanAngle,
       'maxGForce': maxGForce,
       'csvFilePath': csvFilePath,
+      'totalDistanceKm': totalDistanceKm,
+      'maxSpeedKmh': maxSpeedKmh,
+      'isSynced': isSynced ? 1 : 0,
     };
   }
 
@@ -40,6 +49,9 @@ class SessionRecord {
       maxLeanAngle: map['maxLeanAngle'],
       maxGForce: map['maxGForce'],
       csvFilePath: map['csvFilePath'],
+      totalDistanceKm: map['totalDistanceKm'] ?? 0.0,
+      maxSpeedKmh: map['maxSpeedKmh'] ?? 0.0,
+      isSynced: map['isSynced'] == 1,
     );
   }
 }

@@ -34,12 +34,14 @@ class DatabaseService {
             endTime TEXT,
             maxLeanAngle REAL,
             maxGForce REAL,
-            csvFilePath TEXT
+            csvFilePath TEXT,
+            totalDistanceKm REAL DEFAULT 0.0,
+            maxSpeedKmh REAL DEFAULT 0.0,
+            isSynced INTEGER DEFAULT 0 -- 0 = Falso, 1 = Verdadeiro
           )
         ''');
       },
       // Se a base de dados já existir, isto força a recriar a tabela com a nova coluna.
-      // NOTA: Para um projeto final, usaríamos scripts de migração, mas para o MVP isto é o mais prático!
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute('ALTER TABLE sessions ADD COLUMN title TEXT');
@@ -94,4 +96,14 @@ class DatabaseService {
       whereArgs: [id],
     );
   }
+
+  Future<void> markAsSynced(int sessionId) async {
+  final db = await database;
+  await db.update(
+    'sessions',
+    {'isSynced': 1},
+    where: 'id = ?',
+    whereArgs: [sessionId],
+  );
+}
 }

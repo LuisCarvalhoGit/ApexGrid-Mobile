@@ -1,16 +1,14 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class TelemetrySyncService {
-
   late final Dio _dio;
-
-  // Telemovel de DEBUG na mesma rede, Usar IP do PC na rede Wi-Fi (ex: 'http://192.168.1.65:5144/api')
-  final String _baseUrl = "http://192.168.1.174:5144/api";
+  final String _baseUrl = 'https://apexgrid-api.onrender.com/api'; 
+  final _storage = const FlutterSecureStorage();
 
   TelemetrySyncService() {
-
     _dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
       connectTimeout: const Duration(seconds: 10),
@@ -29,48 +27,52 @@ class TelemetrySyncService {
     required double maxGForce,
     required File csvFile,
   }) async {
+    
+    // Vai buscar o Token JWT Real ao Cofre Encriptado
+    final token = await _storage.read(key: 'jwt_token');
+    
+    if (token == null) {
+      debugPrint("❌ Sincronização cancelada: Sem Token JWT (Sessão não iniciada).");
+      return false;
+    }
 
     try {
-
-      // Criar o envelope Multipart correspondente ao UploadRideRequest do C#
       final formData = FormData.fromMap({
-        'UserId': userId,
+        'UserId': userId, // Mais tarde podemos ir buscar isto ao JWT!
         'MotorcycleModel': motorcycleModel,
-        // O C# espera datas no formato ISO 8601
         'StartTime': startTime.toUtc().toIso8601String(),
         'EndTime': endTime.toUtc().toIso8601String(),
         'TotalDistanceKm': totalDistanceKm,
         'MaxSpeedKmh': maxSpeedKmh,
         'MaxLeanAngleDegrees': maxLeanAngleDegrees,
         'MaxGForce': maxGForce,
-        // O ficheiro físico a ser anexado
         'TelemetryFile': await MultipartFile.fromFile(
           csvFile.path,
-          filename: csvFile.uri.pathSegments.last, // Extrai o nome do ficheiro (ex: ride_01.csv)
+          filename: csvFile.uri.pathSegments.last,
         ),
       });
 
-      final response = await _dio.post("/rides", data: formData);
+      // Dispara para o servidor C# COM o Token Real
+      final response = await _dio.post(
+        '/rides', 
+        data: formData,
+        options: Options(
+          headers: {
+            "Authorization": "Bearer $token", 
+          }
+        )
+      );
 
-      // Validar
-      if (response.statusCode == 201) {
-        debugPrint('✅ Viagem sincronizada com sucesso! ID gerado: ${response.data['guid']}');
-        return true;
-      }
-
-      return false;
+      return response.statusCode == 201;
 
     } on DioException catch (e) {
-      // Tratamento de erros
-      debugPrint('❌ Erro de rede ao sincronizar: ${e.message}');
-      if (e.response != null) {
-        debugPrint('❌ Detalhes do servidor: ${e.response?.data}');
+      if (e.response?.statusCode == 401) {
+        debugPrint("⚠️ BACKEND: Token JWT expirou! O utilizador precisa de fazer Login novamente.");
+        // Opcional: Aqui poderíamos disparar o ref.read(authStateProvider.notifier).logout();
+      } else {
+        debugPrint("❌ Erro grave no upload: ${e.message}");
       }
       return false;
-    } catch (e) {
-      debugPrint('❌ Erro inesperado no telemóvel: $e');
-      return false;
     }
-    
   }
 }

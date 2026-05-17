@@ -131,9 +131,11 @@ class SessionController extends Notifier<SessionState> {
       maxLeanAngle: _currentMaxLean, 
       maxGForce: maxG,
       csvFilePath: savedPath,
+      totalDistanceKm: totalDistanceKm + 1,
+      maxSpeedKmh: maxSpeed,
     );
 
-    await DatabaseService().insertSession(record);
+    final insertedId = await DatabaseService().insertSession(record);
     ref.invalidate(historyProvider);
 
     // Lógica da Garagem e Odómetro
@@ -162,7 +164,7 @@ class SessionController extends Notifier<SessionState> {
         motorcycleModel: bikeName,
         startTime: _sessionStartTime!,
         endTime: endTime,
-        totalDistanceKm: totalDistanceKm,
+        totalDistanceKm: totalDistanceKm + 1,
         maxSpeedKmh: maxSpeed,
         maxLeanAngleDegrees: _currentMaxLean,
         maxGForce: maxG,
@@ -171,6 +173,9 @@ class SessionController extends Notifier<SessionState> {
 
       if (syncSuccess) {
         debugPrint("🚀 BACKEND: Upload e sincronização concluídos com sucesso!");
+
+        await DatabaseService().markAsSynced(insertedId); 
+        ref.invalidate(historyProvider);
       } else {
         debugPrint("⚠️ BACKEND: Falha ao enviar a viagem para o servidor.");
       }

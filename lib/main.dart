@@ -11,6 +11,9 @@ import 'utils/low_pass_filter.dart';
 
 import 'views/main_navigation.dart';
 
+import 'providers/auth_provider.dart';
+import 'views/login_screen.dart';
+
 /// 1. Provider da Stream bruta (isolamento do hardware físico)
 final rawAccelerometerStreamProvider = Provider<Stream<UserAccelerometerEvent>>((ref) {
   // gameInterval = ~50Hz, ideal para captar a física da mota com precisão
@@ -58,11 +61,15 @@ void main() async {
   );
 }
 
-class ApexGridApp extends StatelessWidget {
+class ApexGridApp extends ConsumerWidget { 
   const ApexGridApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+
+    // Ouve o estado da autenticação (true ou false)
+    final isLoggedIn = ref.watch(authStateProvider);
+
     return MaterialApp(
       title: 'ApexGrid MVP',
       theme: ThemeData(
@@ -73,10 +80,10 @@ class ApexGridApp extends StatelessWidget {
           secondary: Colors.cyanAccent,
           surface: Color(0xFF121212), // Cinza muito escuro para os cartões
         ),
-        fontFamily: 'RobotoMono', // Ou importar a fonte 'Inter' para um look hiper-moderno
+        fontFamily: 'RobotoMono', 
         useMaterial3: true,
       ),
-      home: const MainNavigation(),
+      home: isLoggedIn ? const MainNavigation() : const LoginScreen(), 
     );
   }
 }
